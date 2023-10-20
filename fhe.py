@@ -27,8 +27,8 @@ def normal_poly(size , modulus):
   return np.poly1d(np.random.normal(mean , std , size).astype(int) % modulus)
 
 def base_decompose(polynomial , T , modulus):
-  # To fetch the power of T used and create an array of 
-  
+  # To fetch the power of T used and create an array of
+
   d = floor(log(modulus , T))
 
   result = []
@@ -69,7 +69,7 @@ def generate_eval_key(sk , size , T , modulus , poly_mod):
   rlks = []
 
   for i in range(d + 1):
-    
+
     a = integer_poly(size , modulus)
     e = normal_poly(size , modulus)
     rlk0 = mod(-(a*sk) + e + ((T**i) * (sk**2)) , modulus , poly_mod)
@@ -100,7 +100,7 @@ def decrypt(sk , ct , t , modulus , poly_mod):
 ## Methods to perform addtion and multiplication between two ciphertexts
 
 def cipher_add(ct1 , ct2 , modulus , poly_mod):
-  
+
   res0 = mod(ct1[0] + ct2[0] , modulus , poly_mod)
   res1 = mod(ct1[1] + ct2[1] , modulus , poly_mod)
   return res0 , res1
@@ -155,27 +155,37 @@ def plain_multiply(ct , pt , t , modulus , poly_mod):
 
 n = 2 ** 4
 T = 2   # Base for relinearlization
-t = 2 ** 15   # modulus for plain text
-q = (2 ** 30) * t   # modulus for polynomial coefficients
+t = 2 ** 21  # modulus for plain text
+q = (2 ** 42) * t   # modulus for polynomial coefficients
 poly_mod = np.poly1d([1] + ([0] * (n-1) ) + [1])
 
 sk = generate_secret_key(n)
 pk = generate_public_key(sk , n , q , poly_mod)
 rlks = generate_eval_key(sk , n , T , q , poly_mod)
 
-pt1 = 203
-pt2 = 31
-pt3 = 4
+pt1 = 2045
+pt2 = 109
+pt3 = 47
 
 c1 = encrypt(pk , pt1 , n , t , q , poly_mod)
 c2 = encrypt(pk , pt2 , n , t , q , poly_mod)
 c3 = encrypt(pk , pt3 , n , t , q , poly_mod)
 
+print(f"ciphertext of {pt1} = {c1}")
+print(f"ciphertext of {pt2} = {c2}")
+print(f"ciphertext of {pt3} = {c3}")
+
 add_c1_pt2 = plain_add(c1 , pt2 , t , q , poly_mod)
 mul_c1_pt3 = plain_multiply(c1 , pt3 , t , q , poly_mod)
 
+print(f"Added ciphertext of ct1 and pt2 = {add_c1_pt2}")
+print(f"multiplied ciphertext of ct1 and pt3 = {mul_c1_pt3}")
+
 add_c1_c2 = cipher_add(c1 , c2 , q , poly_mod)
 mul_c1_c2 = cipher_multiply(rlks , c1 , c2 , t , T , q , poly_mod)
+
+print(f"Added ciphertext of ct1 and ct2 = {add_c1_c2}")
+print(f"multiplied ciphertext of ct1 and ct2 = {mul_c1_c2} \n")
 
 dct1 = decrypt(sk , add_c1_pt2 , t , q , poly_mod)
 dct2 = decrypt(sk , mul_c1_pt3 , t , q , poly_mod)
