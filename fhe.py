@@ -1,198 +1,198 @@
 import numpy as np
 from math import floor , log
 from random import choice
-
+import utils
 # Polynomial Genaration Part
 
-def binary_poly(size):
-  # Generates polynomial with coefficients randomly between [0 , 1]
-  # (size - 1) ---> degree of the polynomial
+N=2**4
+RT=2
+T=2**21
+Q=2**63
+POLY_MOD=np.poly1d([1] + ([0] * (N-1) ) + [1])
 
-  return np.poly1d(np.random.randint(0 , 2 , size).astype(int))
 
-def integer_poly(size , modulus):
+class FV12:
+  
+    def generate_keys(self):
+      sk=utils.binary_poly(N)
+      a = utils.integer_poly(N , Q)
+      e = utils.normal_poly(N , Q)
+      pk0 = utils.mod(-(a*sk) + e , Q , POLY_MOD)
+      pk1 = a
+      d = floor(log(Q , RT))
+      rlks = []
+      for i in range(d + 1):
+        a = utils.integer_poly(N , Q)
+        e = utils.normal_poly(N , Q)
+        rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk**2)) , Q , POLY_MOD)
+        rlk1 = a
+        rlks.append((rlk0 , rlk1))
+      return PublicKey(pk0,pk1,rlks),PrivateKey(sk)
+  
+class PublicKey:
+  def __init__(self,pk0,pk1,rlks):
+    self.pk0=pk0
+    self.pk1=pk1
+    self.rlks=rlks
+    
+  def encrypt(self,pt):
+    delta = Q // T
+    u = utils.binary_poly(N)
+    e1 = utils.normal_poly(N , Q)
+    e2 = utils.normal_poly(N , Q)
 
-  #Generates a polynomial with integral coefficients between [0 , modulus]
-  # (size - 1) ---> degree of the polynomial
+    c0 = utils.mod((self.pk0 * u) + e1 + (delta * pt) , Q , POLY_MOD)
+    c1 = utils.mod((self.pk1 * u) + e2 , Q , POLY_MOD)
 
-  return np.poly1d(np.random.randint(0 , modulus , size , dtype = np.int64) % modulus)
+    return CipherText(c0 , c1,self.pk0,self.pk1,self.rlks)
+    
+class PrivateKey:
+  def __init__(self,sk):
+    self.sk=sk
+  
+  def decrypt(self,ciphertext):
+    scale = T/ Q
+    temp = utils.mod(ciphertext.ct0 + ciphertext.ct1 * self.sk , Q , POLY_MOD)
+    pt=np.poly1d((np.round(scale * temp) % T).astype(int))[0]
+    return ((pt+(T//2))%T)-(T//2)
+    
 
-def normal_poly(size , modulus):
-
-  # Generates a polynomial with coefficent from a normal distribution of mean 0
-  # and standard deviation of 2
-  # (size - 1) ---> degree of the polynomial
-  mean = 0
-  std = 2
-  return np.poly1d(np.random.normal(mean , std , size).astype(int) % modulus)
-
-def base_decompose(polynomial , T , modulus):
+class CipherText: 
+  
+  def __init__(self,ct0,ct1,pk0,pk1,rlks):
+    self.ct0=ct0
+    self.ct1=ct1
+    self.pk0=pk0
+    self.pk1=pk1
+    self.rlks=rlks
+  
+  def __base_decompose(self,polynomial):
   # To fetch the power of T used and create an array of
 
-  d = floor(log(modulus , T))
+    d = floor(log(Q , RT))
 
-  result = []
-  for i in range(d + 1):
-    poly = np.poly1d(np.floor(polynomial / T ** i).astype(int) % T)
-    result.append(poly)
+    result = []
+    for i in range(d + 1):
+      poly = np.poly1d(np.floor(polynomial / RT ** i).astype(int) % RT)
+      result.append(poly)
 
-  return np.array(result)
+    return np.array(result)
 
+  def __plain_add(self , pt):
 
-def mod(polynomial , modulus  , poly_mod):
-  # To ensure coefficients of the polynomial between [0 , modulus]
-  # Also (polynomial)mod(poly_mod) i.e. r in polynomial = a * poly_mod + r
+    delta = Q // T
+    m = delta * pt    # scaled_pt
+    res0 = utils.mod((self.ct0 + m) , Q , POLY_MOD)
+    return CipherText(res0 , self.ct1,self.pk0,self.pk1,self.rlks)
+  
+  def __plain_multiply(self,pt):
 
-  remainder = np.floor(np.polydiv(polynomial , poly_mod)[1])
-  return np.poly1d(remainder % modulus)
+    res0 = utils.mod((self.ct0 * pt) , Q , POLY_MOD)
+    res1 = utils.mod((self.ct1 * pt) , Q , POLY_MOD)
 
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+  def __cipher_add(self,ciphertext):
 
-def generate_secret_key(size):
+    res0 = utils.mod(self.ct0 + ciphertext.ct0 ,Q ,POLY_MOD)
+    res1 = utils.mod(self.ct1 +ciphertext.ct1 ,Q ,POLY_MOD)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+  
+  def __cipher_sub(self,ciphertext):
 
-  return binary_poly(size)
+    res0 = utils.mod(self.ct0 - ciphertext.ct0 ,Q ,POLY_MOD)
+    res1 = utils.mod(self.ct1 - ciphertext.ct1 ,Q ,POLY_MOD)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+  
+  def __cipher_multiply(self , ciphertext):
 
-def generate_public_key(sk , size , modulus , poly_mod):
-  #Generate the secret key and public key as a funtion of the secret key
+    d = floor(log(Q , RT))
+    scale = T / Q
+    temp = self.ct0 * ciphertext.ct0
+    res0 = utils.mod(np.round(scale * temp) , Q , POLY_MOD)
 
-  a = integer_poly(size , modulus)
-  e = normal_poly(size , modulus)
+    temp = self.ct0 * ciphertext.ct1 + self.ct1 * ciphertext.ct0
+    res1 = utils.mod(np.round(scale * temp) , Q , POLY_MOD)
 
-  pk0 = mod(-(a*sk) + e , modulus , poly_mod)
-  pk1 = a
+    temp = self.ct1 * ciphertext.ct1
+    res2 = utils.mod(np.round(scale * temp) , Q , POLY_MOD)
+    decomposed_res2 = self.__base_decompose(res2)
+    res_0 = utils.mod(res0 + sum(self.rlks[i][0] * decomposed_res2[i] for i in range(d + 1)) , Q , POLY_MOD)
+    res_1 = utils.mod(res1 + sum(self.rlks[i][1] * decomposed_res2[i] for i in range(d + 1)) , Q , POLY_MOD)
+    return CipherText(res_0 , res_1,self.pk0,self.pk1,self.rlks)
 
-  return pk0 , pk1
-
-
-def generate_eval_key(sk , size , T , modulus , poly_mod):
-
-  d = floor(log(modulus , T))
-  rlks = []
-
-  for i in range(d + 1):
-
-    a = integer_poly(size , modulus)
-    e = normal_poly(size , modulus)
-    rlk0 = mod(-(a*sk) + e + ((T**i) * (sk**2)) , modulus , poly_mod)
-    rlk1 = a
-    rlks.append((rlk0 , rlk1))
-
-  return rlks
-
-
-def encrypt(pk , pt , size , t , modulus , poly_mod):
-
-  delta = modulus // t
-  u = binary_poly(size)
-  e1 = normal_poly(size , modulus)
-  e2 = normal_poly(size , modulus)
-
-  c0 = mod((pk[0] * u) + e1 + (delta * pt) , modulus , poly_mod)
-  c1 = mod((pk[1] * u) + e2 , modulus , poly_mod)
-
-  return c0 , c1
-
-def decrypt(sk , ct , t , modulus , poly_mod):
-
-  scale = t / modulus
-  temp = mod(ct[0] + ct[1] * sk , modulus , poly_mod)
-  return np.poly1d((np.round(scale * temp) % t).astype(int))
-
-## Methods to perform addtion and multiplication between two ciphertexts
-
-def cipher_add(ct1 , ct2 , modulus , poly_mod):
-
-  res0 = mod(ct1[0] + ct2[0] , modulus , poly_mod)
-  res1 = mod(ct1[1] + ct2[1] , modulus , poly_mod)
-  return res0 , res1
-
-def cipher_multiply(rlks , ct1 , ct2 , t , T , modulus , poly_mod):
-
-  d = floor(log(modulus , T))
-  #Two phases :- Multiplication term wise and then relinearization
-
-  scale = t / modulus
-  temp = ct1[0] * ct2[0]
-  res0 = mod(np.round(scale * temp) , modulus , poly_mod)
-
-  temp = ct1[0] * ct2[1] + ct1[1] * ct2[0]
-  res1 = mod(np.round(scale * temp) , modulus , poly_mod)
-
-  temp = ct1[1] * ct2[1]
-  res2 = mod(np.round(scale * temp) , modulus , poly_mod)
-
-#  t_res = (res0 , res1 , res2)
-
-  # Relinearization (Can make another fucntion for relinearization also)
-
-  decomposed_res2 = base_decompose(res2 , T , modulus)
-  res_0 = mod(res0 + sum(rlks[i][0] * decomposed_res2[i] for i in range(d + 1)) , modulus , poly_mod)
-  res_1 = mod(res1 + sum(rlks[i][1] * decomposed_res2[i] for i in range(d + 1)) , modulus , poly_mod)
-
-  return res_0 , res_1
-
-# Methods to add and multiply plaint texts
-
-def plain_add(ct , pt , t , modulus , poly_mod):
-
-  delta = modulus // t
-  m = delta * pt    # scaled_pt
-  res0 = mod((ct[0] + m) , modulus , poly_mod)
-
-  return (res0 , ct[1])
-
-def plain_multiply(ct , pt , t , modulus , poly_mod):
-
-  size = len(poly_mod) - 1
-
-  res0 = mod((ct[0] * pt) , modulus , poly_mod)
-  res1 = mod((ct[1] * pt) , modulus , poly_mod)
-
-  return res0 , res1
-
-
+  def __add__ (self,other):
+        if(isinstance(other,int)):
+            return self.__plain_add(other)
+        elif(isinstance(other,CipherText)):
+            if(self.pk0!=other.pk0 or self.pk1!=other.pk1):
+              raise Exception("You can only add ciphertexts encrypted by same key!!")
+            else:
+              return self.__cipher_add(other)
+        else:
+            raise Exception("Unkown Type!!")
+  def __sub__(self,other):
+       if(isinstance(other,int)):
+            return self.__plain_add(0-other)
+       elif(isinstance(other,CipherText)):
+            if(self.pk0!=other.pk0 or self.pk1!=other.pk1):
+              raise Exception("You can only subtract ciphertexts encrypted by same key!!")
+            else:
+              return self.__cipher_sub(other)
+       else:
+            raise Exception("Unkown Type!!")
+  def __mul__(self,other):
+       if(isinstance(other,int)):
+            return self.__plain_multiply(other)
+       elif(isinstance(other,CipherText)):
+            if(self.pk0!=other.pk0 or self.pk1!=other.pk1):
+              raise Exception("You can only multiply ciphertexts encrypted by same key!!")
+            else:
+              return self.__cipher_multiply(other)
+       else:
+            raise Exception("Unkown Type!!")
+  def __str__(self):
+    return str(self.ct0)+' '+str(self.ct1)
 #######################################################
 # Implemenation
+if __name__=='__main__':
+  fv12=FV12()
+  public_key,private_key=fv12.generate_keys()
+  print("Enter your equation:")
+  while(True):
+        print(">> ",end="")
+        eq=input()
+        eq=eq.replace(" ","")
+        conversion=utils.Conversion(len(eq))
+        postfix_eq=conversion.infixToPostfix(eq)
+        print(postfix_eq)
+        stack=[]
+        i=0
+        while i in range(len(postfix_eq)):
+            if(postfix_eq[i].isdigit()):
+                stack.append(postfix_eq[i])
+            else:
+                op=postfix_eq[i]
+                b=int(stack.pop())
+                a=int(stack.pop())
+                if(op=='+'):
+                    a_encrypted=public_key.encrypt(a)
+                    b_encrypted=public_key.encrypt(b)
+                    c_encrypted=a_encrypted+b_encrypted
+                    stack.append(private_key.decrypt(c_encrypted))
+                elif(op=='-'):
+                    a_encrypted=public_key.encrypt(a)
+                    b_encrypted=public_key.encrypt(b)
+                    c_encrypted=a_encrypted-b_encrypted
+                    stack.append(private_key.decrypt(c_encrypted))
+                elif(op=='*'):
+                    a_encrypted=public_key.encrypt(a)
+                    b_encrypted=public_key.encrypt(b)
+                    c_encrypted=a_encrypted*b_encrypted
+                    stack.append(private_key.decrypt(c_encrypted))
 
-n = 2 ** 4
-T = 2   # Base for relinearlization
-t = 2 ** 21  # modulus for plain text
-q = (2 ** 42) * t   # modulus for polynomial coefficients
-poly_mod = np.poly1d([1] + ([0] * (n-1) ) + [1])
-
-sk = generate_secret_key(n)
-pk = generate_public_key(sk , n , q , poly_mod)
-rlks = generate_eval_key(sk , n , T , q , poly_mod)
-
-pt1 = 2045
-pt2 = 109
-pt3 = 47
-
-c1 = encrypt(pk , pt1 , n , t , q , poly_mod)
-c2 = encrypt(pk , pt2 , n , t , q , poly_mod)
-c3 = encrypt(pk , pt3 , n , t , q , poly_mod)
-
-print(f"ciphertext of {pt1} = {c1}")
-print(f"ciphertext of {pt2} = {c2}")
-print(f"ciphertext of {pt3} = {c3}")
-
-add_c1_pt2 = plain_add(c1 , pt2 , t , q , poly_mod)
-mul_c1_pt3 = plain_multiply(c1 , pt3 , t , q , poly_mod)
-
-print(f"Added ciphertext of ct1 and pt2 = {add_c1_pt2}")
-print(f"multiplied ciphertext of ct1 and pt3 = {mul_c1_pt3}")
-
-add_c1_c2 = cipher_add(c1 , c2 , q , poly_mod)
-mul_c1_c2 = cipher_multiply(rlks , c1 , c2 , t , T , q , poly_mod)
-
-print(f"Added ciphertext of ct1 and ct2 = {add_c1_c2}")
-print(f"multiplied ciphertext of ct1 and ct2 = {mul_c1_c2} \n")
-
-dct1 = decrypt(sk , add_c1_pt2 , t , q , poly_mod)
-dct2 = decrypt(sk , mul_c1_pt3 , t , q , poly_mod)
-dct3 = decrypt(sk , mul_c1_c2 , t , q , poly_mod)
-dct4 = decrypt(sk , add_c1_c2 , t , q , poly_mod)
-
-print(f"PlainText Addition :- {pt1} + {pt2} = {dct1[0]}")
-print(f"PlainText Multiplication :- {pt1} * {pt3} = {dct2[0]}")
-print(f"CipherText Multiplication :- {pt1} * {pt2} = {dct3[0]}")
-print(f"CipherText Addition :- {pt1} + {pt2} = {dct4[0]}")
+                else:
+                    print('Operation Not Supported')
+                    break
+            i+=1
+        print(stack.pop())
+  
