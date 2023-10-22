@@ -2,14 +2,17 @@ import numpy as np
 from math import floor , log
 from random import choice
 import utils
-# Polynomial Genaration Part
+import math
 
-N=2**4
+
+N=16
 RT=2
-T=2**21
+T=utils.large_prime(21)
+print(int(math.log2(T)) + 1)
 Q=2**63
-POLY_MOD=np.poly1d([1] + ([0] * (N-1) ) + [1])
 
+POLY_MOD=np.poly1d([1] + ([0] * (N-1) ) + [1])
+print(math.log2(Q/T))
 
 class FV12:
   
@@ -53,7 +56,7 @@ class PrivateKey:
   def decrypt(self,ciphertext):
     scale = T/ Q
     temp = utils.mod(ciphertext.ct0 + ciphertext.ct1 * self.sk , Q , POLY_MOD)
-    pt=np.poly1d((np.round(scale * temp) % T).astype(int))[0]
+    pt=int((np.round(scale * temp) % T)[-1])
     return ((pt+(T//2))%T)-(T//2)
     
 
@@ -76,7 +79,7 @@ class CipherText:
       poly = np.poly1d(np.floor(polynomial / RT ** i).astype(int) % RT)
       result.append(poly)
 
-    return np.array(result)
+    return np.array(result,dtype=object)
 
   def __plain_add(self , pt):
 
@@ -89,8 +92,13 @@ class CipherText:
 
     res0 = utils.mod((self.ct0 * pt) , Q , POLY_MOD)
     res1 = utils.mod((self.ct1 * pt) , Q , POLY_MOD)
-
     return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+
+  def __plain_divide(self,pt):
+    res0 = utils.mod((self.ct0 * utils.modInverse(pt,T)) , Q , POLY_MOD)
+    res1 = utils.mod((self.ct1 *utils.modInverse(pt,T)) , Q , POLY_MOD)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+  
   def __cipher_add(self,ciphertext):
 
     res0 = utils.mod(self.ct0 + ciphertext.ct0 ,Q ,POLY_MOD)
@@ -163,6 +171,11 @@ class CipherText:
             return self.__plain_power(other)
     else:
             raise Exception("You can only power ciphertext with plaintext")
+  def __floordiv__(self,other):
+    if(isinstance(other,int)):
+            return self.__plain_divide(other)
+    else:
+            raise Exception("You can only divide ciphertext with plaintext")
            
   def __str__(self):
     return str(self.ct0)+' '+str(self.ct1)
@@ -178,7 +191,7 @@ if __name__=='__main__':
         eq=eq.replace(" ","")
         conversion=utils.Conversion(len(eq))
         postfix_eq=conversion.infixToPostfix(eq)
-        
+        print(postfix_eq)
         stack=[]
         i=0
         
@@ -186,6 +199,7 @@ if __name__=='__main__':
           if(postfix_eq[i].isdigit()):
             postfix_eq[i]=public_key.encrypt(int(postfix_eq[i]))
         i=0
+        first=0
         while i < len(postfix_eq):
 
             if(isinstance(postfix_eq[i],CipherText)):
@@ -204,6 +218,9 @@ if __name__=='__main__':
                 elif(op=='^'):
                     b=private_key.decrypt(b)
                     stack.append(a**b)
+                elif(op=='/'):
+                    b=private_key.decrypt(b)
+                    stack.append(a//b)
                 else:
                     print('Operation Not Supported')
                     break
