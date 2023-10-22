@@ -119,7 +119,15 @@ class CipherText:
     res_0 = utils.mod(res0 + sum(self.rlks[i][0] * decomposed_res2[i] for i in range(d + 1)) , Q , POLY_MOD)
     res_1 = utils.mod(res1 + sum(self.rlks[i][1] * decomposed_res2[i] for i in range(d + 1)) , Q , POLY_MOD)
     return CipherText(res_0 , res_1,self.pk0,self.pk1,self.rlks)
-
+  def __plain_power(self, pt):
+    if(pt==0):
+      raise Exception("Have not added support for x^0 = 1 yet")
+    else:
+      res=self
+      for i in range(pt-1):
+        res=res*self
+      return res
+    
   def __add__ (self,other):
         if(isinstance(other,int)):
             return self.__plain_add(other)
@@ -150,9 +158,15 @@ class CipherText:
               return self.__cipher_multiply(other)
        else:
             raise Exception("Unkown Type!!")
+  def __pow__(self,other):
+    if(isinstance(other,int)):
+            return self.__plain_power(other)
+    else:
+            raise Exception("You can only power ciphertext with plaintext")
+           
   def __str__(self):
     return str(self.ct0)+' '+str(self.ct1)
-#######################################################
+
 # Implemenation
 if __name__=='__main__':
   fv12=FV12()
@@ -164,35 +178,35 @@ if __name__=='__main__':
         eq=eq.replace(" ","")
         conversion=utils.Conversion(len(eq))
         postfix_eq=conversion.infixToPostfix(eq)
-        print(postfix_eq)
+        
         stack=[]
         i=0
-        while i in range(len(postfix_eq)):
-            if(postfix_eq[i].isdigit()):
+        
+        for i in range(len(postfix_eq)):
+          if(postfix_eq[i].isdigit()):
+            postfix_eq[i]=public_key.encrypt(int(postfix_eq[i]))
+        i=0
+        while i < len(postfix_eq):
+
+            if(isinstance(postfix_eq[i],CipherText)):
                 stack.append(postfix_eq[i])
+               
             else:
                 op=postfix_eq[i]
-                b=int(stack.pop())
-                a=int(stack.pop())
+                b=stack.pop()
+                a=stack.pop()
                 if(op=='+'):
-                    a_encrypted=public_key.encrypt(a)
-                    b_encrypted=public_key.encrypt(b)
-                    c_encrypted=a_encrypted+b_encrypted
-                    stack.append(private_key.decrypt(c_encrypted))
+                    stack.append(a+b)
                 elif(op=='-'):
-                    a_encrypted=public_key.encrypt(a)
-                    b_encrypted=public_key.encrypt(b)
-                    c_encrypted=a_encrypted-b_encrypted
-                    stack.append(private_key.decrypt(c_encrypted))
+                    stack.append(a-b)
                 elif(op=='*'):
-                    a_encrypted=public_key.encrypt(a)
-                    b_encrypted=public_key.encrypt(b)
-                    c_encrypted=a_encrypted*b_encrypted
-                    stack.append(private_key.decrypt(c_encrypted))
-
+                    stack.append(a*b)
+                elif(op=='^'):
+                    b=private_key.decrypt(b)
+                    stack.append(a**b)
                 else:
                     print('Operation Not Supported')
                     break
             i+=1
-        print(stack.pop())
+        print(private_key.decrypt(stack.pop()))
   
