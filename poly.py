@@ -1,5 +1,4 @@
 import math
-import numpy as np
 import random
 class Polynomial():
     def __init__(self,arr):
@@ -9,11 +8,11 @@ class Polynomial():
                 self.poly[i]=arr[i]
                 self.degree=i
     def __add__(self,other):
-        
             pass
     def __sub__(self,other):
         pass
-    
+    def polydiv(self,other):
+        pass
     def __mul__(self,other):
         if(not isinstance(other,Polynomial)):
             for key in self.poly.keys():
@@ -39,15 +38,14 @@ class Polynomial():
             else:
                 res+=str(item[1])+' x^'+str(item[0])+' + '
         return res[:-2]
-a=[random.uniform(0,2**128)]*3
-b=[random.uniform(0,2**128)]*3
+
+a=[1,2**1000]
+b=[3,4]
 
 a=Polynomial(a)
 b=Polynomial(b)
 print(a)
 print(b)
 print(a*b)
-
-            
             
             

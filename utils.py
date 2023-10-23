@@ -1,4 +1,3 @@
-
 import numpy as np
 from math import floor , log
 from random import choice
