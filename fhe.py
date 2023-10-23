@@ -5,14 +5,14 @@ import utils
 import math
 
 
-N=16
+N=1024
 RT=2
-T=utils.large_prime(21)
-print(int(math.log2(T)) + 1)
-Q=2**63
+T=utils.large_prime(6)
+P=2**30
+Q=2**27
 
 POLY_MOD=np.poly1d([1] + ([0] * (N-1) ) + [1])
-print(math.log2(Q/T))
+
 
 class FV12:
   
@@ -20,23 +20,21 @@ class FV12:
       sk=utils.binary_poly(N)
       a = utils.integer_poly(N , Q)
       e = utils.normal_poly(N , Q)
-      pk0 = utils.mod(-(a*sk) + e , Q , POLY_MOD)
+      
+      pk0 = utils.mod(-(a*sk + e) , Q , POLY_MOD)
       pk1 = a
-      d = floor(log(Q , RT))
-      rlks = []
-      for i in range(d + 1):
-        a = utils.integer_poly(N , Q)
-        e = utils.normal_poly(N , Q)
-        rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk**2)) , Q , POLY_MOD)
-        rlk1 = a
-        rlks.append((rlk0 , rlk1))
-      return PublicKey(pk0,pk1,rlks),PrivateKey(sk)
+      adash=utils.integer_poly(N , P*Q)
+      edash= utils.normal_poly(N , Q)
+      rlk0=utils.mod(-(adash*sk + edash) + P*(sk**2) , P*Q , POLY_MOD)
+      rlk1=adash
+      rlk=[rlk0,rlk1]
+      return PublicKey(pk0,pk1,rlk),PrivateKey(sk)
   
 class PublicKey:
-  def __init__(self,pk0,pk1,rlks):
+  def __init__(self,pk0,pk1,rlk):
     self.pk0=pk0
     self.pk1=pk1
-    self.rlks=rlks
+    self.rlk=rlk
     
   def encrypt(self,pt):
     delta = Q // T
@@ -47,7 +45,7 @@ class PublicKey:
     c0 = utils.mod((self.pk0 * u) + e1 + (delta * pt) , Q , POLY_MOD)
     c1 = utils.mod((self.pk1 * u) + e2 , Q , POLY_MOD)
 
-    return CipherText(c0 , c1,self.pk0,self.pk1,self.rlks)
+    return CipherText(c0 , c1,self.pk0,self.pk1,self.rlk)
     
 class PrivateKey:
   def __init__(self,sk):
@@ -57,17 +55,17 @@ class PrivateKey:
     scale = T/ Q
     temp = utils.mod(ciphertext.ct0 + ciphertext.ct1 * self.sk , Q , POLY_MOD)
     pt=int((np.round(scale * temp) % T)[-1])
-    return ((pt+(T//2))%T)-(T//2)
+    return pt
     
 
 class CipherText: 
   
-  def __init__(self,ct0,ct1,pk0,pk1,rlks):
+  def __init__(self,ct0,ct1,pk0,pk1,rlk):
     self.ct0=ct0
     self.ct1=ct1
     self.pk0=pk0
     self.pk1=pk1
-    self.rlks=rlks
+    self.rlk=rlk
   
   def __base_decompose(self,polynomial):
   # To fetch the power of T used and create an array of
@@ -76,7 +74,7 @@ class CipherText:
 
     result = []
     for i in range(d + 1):
-      poly = np.poly1d(np.floor(polynomial / RT ** i).astype(int) % RT)
+      poly = np.poly1d(np.floor(polynomial /( RT ** i)).astype(int) % RT)
       result.append(poly)
 
     return np.array(result,dtype=object)
@@ -86,30 +84,30 @@ class CipherText:
     delta = Q // T
     m = delta * pt    # scaled_pt
     res0 = utils.mod((self.ct0 + m) , Q , POLY_MOD)
-    return CipherText(res0 , self.ct1,self.pk0,self.pk1,self.rlks)
+    return CipherText(res0 , self.ct1,self.pk0,self.pk1,self.rlk)
   
   def __plain_multiply(self,pt):
 
     res0 = utils.mod((self.ct0 * pt) , Q , POLY_MOD)
     res1 = utils.mod((self.ct1 * pt) , Q , POLY_MOD)
-    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlk)
 
   def __plain_divide(self,pt):
     res0 = utils.mod((self.ct0 * utils.modInverse(pt,T)) , Q , POLY_MOD)
     res1 = utils.mod((self.ct1 *utils.modInverse(pt,T)) , Q , POLY_MOD)
-    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlk)
   
   def __cipher_add(self,ciphertext):
 
     res0 = utils.mod(self.ct0 + ciphertext.ct0 ,Q ,POLY_MOD)
     res1 = utils.mod(self.ct1 +ciphertext.ct1 ,Q ,POLY_MOD)
-    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlk)
   
   def __cipher_sub(self,ciphertext):
 
     res0 = utils.mod(self.ct0 - ciphertext.ct0 ,Q ,POLY_MOD)
     res1 = utils.mod(self.ct1 - ciphertext.ct1 ,Q ,POLY_MOD)
-    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlks)
+    return CipherText(res0 , res1,self.pk0,self.pk1,self.rlk)
   
   def __cipher_multiply(self , ciphertext):
 
@@ -123,10 +121,9 @@ class CipherText:
 
     temp = self.ct1 * ciphertext.ct1
     res2 = utils.mod(np.round(scale * temp) , Q , POLY_MOD)
-    decomposed_res2 = self.__base_decompose(res2)
-    res_0 = utils.mod(res0 + sum(self.rlks[i][0] * decomposed_res2[i] for i in range(d + 1)) , Q , POLY_MOD)
-    res_1 = utils.mod(res1 + sum(self.rlks[i][1] * decomposed_res2[i] for i in range(d + 1)) , Q , POLY_MOD)
-    return CipherText(res_0 , res_1,self.pk0,self.pk1,self.rlks)
+    c20=utils.mod(np.round((res2*self.rlk[0])/P) , Q , POLY_MOD)
+    c21=utils.mod(np.round((res2*self.rlk[1])/P) , Q , POLY_MOD)
+    return CipherText(res0+c20 , res1+c21,self.pk0,self.pk1,self.rlk)
   def __plain_power(self, pt):
     if(pt==0):
       raise Exception("Have not added support for x^0 = 1 yet")
@@ -191,7 +188,7 @@ if __name__=='__main__':
         eq=eq.replace(" ","")
         conversion=utils.Conversion(len(eq))
         postfix_eq=conversion.infixToPostfix(eq)
-        print(postfix_eq)
+       
         stack=[]
         i=0
         

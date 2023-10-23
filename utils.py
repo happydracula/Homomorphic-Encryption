@@ -8,14 +8,14 @@ def binary_poly(size):
   # (size - 1) ---> degree of the polynomial
 
   return np.poly1d(np.random.randint(-1 , 2 , size).astype(int))
-print(binary_poly(20))
+
 def integer_poly(size , modulus):
 
   #Generates a polynomial with integral coefficients between [0 , modulus]
   # (size - 1) ---> degree of the polynomial
 
   return np.poly1d(np.random.randint(0 , modulus , size,dtype=np.int64) % modulus)
-
+print(integer_poly(19,2))
 def normal_poly(size , modulus):
 
   # Generates a polynomial with coefficent from a normal distribution of mean 0
@@ -213,4 +213,3 @@ def modInverse(A, M):
         x = x + m0
  
     return x
- 

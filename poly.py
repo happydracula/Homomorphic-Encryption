@@ -1,0 +1,53 @@
+import math
+import numpy as np
+import random
+class Polynomial():
+    def __init__(self,arr):
+        self.poly={}
+        for i in range(len(arr)):
+            if(arr[i]!=0):
+                self.poly[i]=arr[i]
+                self.degree=i
+    def __add__(self,other):
+        
+            pass
+    def __sub__(self,other):
+        pass
+    
+    def __mul__(self,other):
+        if(not isinstance(other,Polynomial)):
+            for key in self.poly.keys():
+                self.poly[key]*=other
+            return self
+        else:  
+            res=Polynomial([])
+            for a in self.poly.items():
+                for b in other.poly.items():
+                    coeff=a[1]*b[1]
+                    power=a[0]+b[0]
+                    if(power in res.poly):
+                        res.poly[power]+=coeff
+                    else:
+                         res.poly[power]=coeff
+            return res
+            
+    def __str__(self):
+        res=''
+        for item in self.poly.items():
+            if(item[0])==0:
+                 res+=str(item[1])+' + '
+            else:
+                res+=str(item[1])+' x^'+str(item[0])+' + '
+        return res[:-2]
+a=[random.uniform(0,2**128)]*3
+b=[random.uniform(0,2**128)]*3
+
+a=Polynomial(a)
+b=Polynomial(b)
+print(a)
+print(b)
+print(a*b)
+
+            
+            
+            
