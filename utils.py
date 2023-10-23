@@ -14,7 +14,7 @@ def integer_poly(size , modulus):
   #Generates a polynomial with integral coefficients between [0 , modulus]
   # (size - 1) ---> degree of the polynomial
 
-  return np.poly1d(np.random.randint(0 , modulus , size,dtype=np.int64) % modulus)
+  return np.poly1d(np.random.randint(-modulus//2+1, (modulus//2)+1 , size,dtype=np.int64) % modulus)
 
 def normal_poly(size , modulus):
 
@@ -24,7 +24,7 @@ def normal_poly(size , modulus):
   mean = 0
   std = 3.2
   
-  return np.poly1d(np.clip(np.random.normal(mean , std , size).astype(int),-32,32))
+  return np.poly1d(np.clip(np.random.normal(mean , std , size).astype(int),-19,19))
 
 def mod(polynomial , modulus  , poly_mod):
   # To ensure coefficients of the polynomial between [0 , modulus]

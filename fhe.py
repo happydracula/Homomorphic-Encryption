@@ -5,12 +5,11 @@ import utils
 import math
 
 
-N=16
+N=4096
 RT=2
-T=utils.large_prime(20)
+T=1024
 print(int(math.log2(T)) + 1)
 Q=2**63
-
 POLY_MOD=np.poly1d([1] + ([0] * (N-1) ) + [1])
 print(math.log2(Q/T))
 
