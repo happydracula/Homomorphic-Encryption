@@ -22,8 +22,7 @@ def normal_poly(size , modulus):
   # (size - 1) ---> degree of the polynomial
   mean = 0
   std = 3.2
-  return np.poly1d(np.random.normal(mean , std , size).astype(int) % modulus)
-
+  return np.poly1d(np.clip(np.random.normal(mean , std , size).astype(int),-32,32))
 def mod(polynomial , modulus  , poly_mod):
   # To ensure coefficients of the polynomial between [0 , modulus]
   # Also (polynomial)mod(poly_mod) i.e. r in polynomial = a * poly_mod + r
