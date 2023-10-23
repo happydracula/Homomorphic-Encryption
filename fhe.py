@@ -7,7 +7,7 @@ import math
 
 N=16
 RT=2
-T=utils.large_prime(21)
+T=utils.large_prime(20)
 print(int(math.log2(T)) + 1)
 Q=2**63
 
