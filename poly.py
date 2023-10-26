@@ -8,9 +8,38 @@ class Polynomial():
                 self.poly[i]=arr[i]
                 self.degree=i
     def __add__(self,other):
-            pass
+        if(isinstance(other,int)):
+            if(0 in self.poly):
+                self.deg[0]+=other
+            else:
+                self.deg[0]=other
+            return self
+        elif(isinstance(other,Polynomial)):
+            for deg, coeff in other.poly.items():
+                if(deg in self.poly):
+                    self.poly[deg]+=coeff
+                else:
+                    self.poly[deg]=coeff
+            return self
+        else:
+            raise Exception('Invalid Data Type')
+
     def __sub__(self,other):
-        pass
+         if(isinstance(other,int)):
+            if(0 in self.poly):
+                self.deg[0]-=other
+            else:
+                self.deg[0]=(-other)
+            return self
+         elif(isinstance(other,Polynomial)):
+            for deg, coeff in other.poly.items():
+                if(deg in self.poly):
+                    self.poly[deg]-=coeff
+                else:
+                    self.poly[deg]=(-coeff)
+            return self
+         else:
+            raise Exception('Invalid Data Type')
     def polydiv(self,other):
         pass
     def __mul__(self,other):
@@ -39,13 +68,13 @@ class Polynomial():
                 res+=str(item[1])+' x^'+str(item[0])+' + '
         return res[:-2]
 
-a=[1,2**1000]
-b=[3,4]
+a=[1,2]
+b=[3,-4,7]
 
 a=Polynomial(a)
 b=Polynomial(b)
 print(a)
 print(b)
-print(a*b)
+print(a+b)
             
             
