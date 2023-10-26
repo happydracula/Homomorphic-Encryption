@@ -32,17 +32,27 @@ def normal_poly(size):
     return Polynomial(t)
 
 
+def poly_round(polynomial):
+    return Polynomial([(int(round(term[0])), int(term[1]))
+                       for term in polynomial.terms], from_monomials=True)
+
+
+def poly_floor(polynomial):
+    return Polynomial([(int(floor(term[0])), int(term[1]))
+                       for term in polynomial.terms], from_monomials=True)
+
+
 def mod(polynomial, modulus, poly_mod):
     remainder = (polynomial % poly_mod).terms
     return Polynomial([(int(term[0] % modulus), int(term[1]))
                        for term in remainder], from_monomials=True)
 
 
-a = [5, 16, 10, 22, 7, 11, 1, 3]
-a = Polynomial(a[::-1])
-print(a)
+# a = [5, 16, 10, 22, 7, 11, 1, 3]
+# a = Polynomial(a[::-1])
+# print(a)
 
-print((a*2)[1])
+# print((a % 3))
 
 
 class Conversion:
