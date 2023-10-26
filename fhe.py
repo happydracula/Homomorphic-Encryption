@@ -5,18 +5,18 @@ import utils
 import math
 from polynomial import Polynomial
 # Params Set 1
-N = 4096
+# N = 4096
+# RT = 2
+# T = 1024
+# Q = 2**63
+# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+
+# Params Set 2
+N = 1024
 RT = 2
 T = 1024
 Q = 2**63
 POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
-
-# Params Set 2
-# N = 1024
-# RT = 2
-# T = 2**32
-# Q = 2**63
-# POLY_MOD = np.poly1d([1] + ([0] * (N-1)) + [1])
 
 
 class FV12:
@@ -24,14 +24,14 @@ class FV12:
     def generate_keys(self):
         sk = utils.binary_poly(N)
         a = utils.integer_poly(N, Q)
-        e = utils.normal_poly(N, Q)
+        e = utils.normal_poly(N)
         pk0 = utils.mod(-(a*sk) + e, Q, POLY_MOD)
         pk1 = a
         d = floor(log(Q, RT))
         rlks = []
         for i in range(d + 1):
             a = utils.integer_poly(N, Q)
-            e = utils.normal_poly(N, Q)
+            e = utils.normal_poly(N)
             rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk**2)), Q, POLY_MOD)
             rlk1 = a
             rlks.append((rlk0, rlk1))
@@ -47,8 +47,8 @@ class PublicKey:
     def encrypt(self, pt):
         delta = Q // T
         u = utils.binary_poly(N)
-        e1 = utils.normal_poly(N, Q)
-        e2 = utils.normal_poly(N, Q)
+        e1 = utils.normal_poly(N)
+        e2 = utils.normal_poly(N)
 
         c0 = utils.mod((self.pk0 * u) + e1 + (delta * pt), Q, POLY_MOD)
         c1 = utils.mod((self.pk1 * u) + e2, Q, POLY_MOD)
@@ -63,8 +63,9 @@ class PrivateKey:
     def decrypt(self, ciphertext):
         scale = T / Q
         temp = utils.mod(ciphertext.ct0 + ciphertext.ct1 *
-                         self.sk, Q, POLY_MOD)
-        pt = int((np.round(scale * temp) % T)[-1])
+                         self.sk, Q, POLY_MOD)[0]
+
+        pt = int((round(scale * temp) % T))
         return pt
 
 
@@ -84,10 +85,10 @@ class CipherText:
 
         result = []
         for i in range(d + 1):
-            poly = np.poly1d(np.floor(polynomial / (RT ** i)).astype(int) % RT)
-            result.append(poly)
-
-        return np.array(result, dtype=object)
+            poly = utils.poly_floor(polynomial // (RT ** i))
+            result.append(Polynomial(
+                [(int(term[0] % RT), int(term[1])) for term in poly.terms], from_monomials=True))
+        return result
 
     def __plain_add(self, pt):
 
@@ -124,13 +125,13 @@ class CipherText:
         d = floor(log(Q, RT))
         scale = T / Q
         temp = self.ct0 * ciphertext.ct0
-        res0 = utils.mod(np.round(scale * temp), Q, POLY_MOD)
+        res0 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
 
         temp = self.ct0 * ciphertext.ct1 + self.ct1 * ciphertext.ct0
-        res1 = utils.mod(np.round(scale * temp), Q, POLY_MOD)
+        res1 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
 
         temp = self.ct1 * ciphertext.ct1
-        res2 = utils.mod(np.round(scale * temp), Q, POLY_MOD)
+        res2 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
         decomposed_res2 = self.__base_decompose(res2)
         res_0 = utils.mod(
             res0 + sum(self.rlks[i][0] * decomposed_res2[i] for i in range(d + 1)), Q, POLY_MOD)

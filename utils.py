@@ -1,5 +1,5 @@
-
 import numpy as np
+from polynomial import Polynomial
 from math import floor, log
 from random import choice
 import random
@@ -9,10 +9,7 @@ def binary_poly(size):
     # Generates polynomial with coefficients randomly between [0 , 1]
     # (size - 1) ---> degree of the polynomial
 
-    return np.poly1d(np.random.randint(-1, 2, size).astype(int))
-
-
-print(binary_poly(20))
+    return Polynomial([int(random.uniform(-2, 2)) for i in range(size)])
 
 
 def integer_poly(size, modulus):
@@ -20,26 +17,42 @@ def integer_poly(size, modulus):
     # Generates a polynomial with integral coefficients between [0 , modulus]
     # (size - 1) ---> degree of the polynomial
 
-    return np.poly1d(np.random.randint(-modulus//2+1, (modulus//2)+1, size, dtype=np.int64) % modulus)
+    return Polynomial([int(random.uniform(-(modulus//2)-1, modulus//2)) for i in range(size)])
 
 
-def normal_poly(size, modulus):
+def normal_poly(size):
 
     # Generates a polynomial with coefficent from a normal distribution of mean 0
     # and standard deviation of 2
     # (size - 1) ---> degree of the polynomial
     mean = 0
     std = 3.2
+    t = np.clip(np.random.normal(
+        mean, std, size).astype(int), -19, 19).tolist()
+    return Polynomial(t)
 
-    return np.poly1d(np.clip(np.random.normal(mean, std, size).astype(int), -19, 19))
+
+def poly_round(polynomial):
+    return Polynomial([(int(round(term[0])), int(term[1]))
+                       for term in polynomial.terms], from_monomials=True)
+
+
+def poly_floor(polynomial):
+    return Polynomial([(int(floor(term[0])), int(term[1]))
+                       for term in polynomial.terms], from_monomials=True)
 
 
 def mod(polynomial, modulus, poly_mod):
-    # To ensure coefficients of the polynomial between [0 , modulus]
-    # Also (polynomial)mod(poly_mod) i.e. r in polynomial = a * poly_mod + r
+    remainder = (polynomial % poly_mod).terms
+    return Polynomial([(int(term[0] % modulus), int(term[1]))
+                       for term in remainder], from_monomials=True)
 
-    remainder = np.floor(np.polydiv(polynomial, poly_mod)[1])
-    return np.poly1d(remainder % modulus)
+
+# a = [5, 16, 10, 22, 7, 11, 1, 3]
+# a = Polynomial(a[::-1])
+# print(a)
+
+# print((a % 3))
 
 
 class Conversion:
