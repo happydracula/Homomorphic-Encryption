@@ -12,10 +12,10 @@ from polynomial import Polynomial
 # POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
 # Params Set 2
-N = 1024
+N = 16
 RT = 2
 T = 1024
-Q = 2**63
+Q = 2**3
 POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
 
@@ -26,14 +26,18 @@ class FV12:
         a = utils.integer_poly(N, Q)
         e = utils.normal_poly(N)
         pk0 = utils.mod(-(a*sk) + e, Q, POLY_MOD)
+        print(-(a*sk) + e)
+        print(POLY_MOD)
+        print(pk0)
+        print('Im here')
         pk1 = a
         d = floor(log(Q, RT))
         rlks = []
         for i in range(d + 1):
             a = utils.integer_poly(N, Q)
             e = utils.normal_poly(N)
-            rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk**2)), Q, POLY_MOD)
             rlk1 = a
+            rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk**2)), Q, POLY_MOD)
             rlks.append((rlk0, rlk1))
         return PublicKey(pk0, pk1, rlks), PrivateKey(sk)
 

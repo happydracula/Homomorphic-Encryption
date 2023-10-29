@@ -1,15 +1,22 @@
 import numpy as np
 from polynomial import Polynomial
+import multiprocessing
 from math import floor, log
 from random import choice
+from joblib import Parallel, delayed
 import random
+
+
+def get_uniform(low, high):
+    return int(random.uniform(-2, 2))
 
 
 def binary_poly(size):
     # Generates polynomial with coefficients randomly between [0 , 1]
     # (size - 1) ---> degree of the polynomial
+    t = Parallel(n_jobs=1)(delayed(get_uniform)(-2, 2) for i in range(size))
 
-    return Polynomial([int(random.uniform(-2, 2)) for i in range(size)])
+    return Polynomial(t)
 
 
 def integer_poly(size, modulus):
@@ -242,3 +249,17 @@ def modInverse(A, M):
         x = x + m0
 
     return x
+
+
+# N = 4096
+# RT = 2
+# T = 1024
+# Q = get_coefficient_modulus(58)
+# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+
+
+# sk = binary_poly(N)
+# a = integer_poly(N, Q)
+# e = normal_poly(N)
+# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+# print(mod(-(a*sk) + e, Q, POLY_MOD))
