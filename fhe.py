@@ -3,7 +3,7 @@ from math import floor, log
 from random import choice
 import utils
 import math
-from polynomial import Polynomial
+from poly import Polynomial
 # Params Set 1
 # N = 4096
 # RT = 2
@@ -12,10 +12,10 @@ from polynomial import Polynomial
 # POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
 # Params Set 2
-N = 16
+N = 1024
 RT = 2
-T = 1024
-Q = 2**3
+T = utils.large_prime(6)
+Q = 2**27
 POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
 
@@ -26,10 +26,6 @@ class FV12:
         a = utils.integer_poly(N, Q)
         e = utils.normal_poly(N)
         pk0 = utils.mod(-(a*sk) + e, Q, POLY_MOD)
-        print(-(a*sk) + e)
-        print(POLY_MOD)
-        print(pk0)
-        print('Im here')
         pk1 = a
         d = floor(log(Q, RT))
         rlks = []
@@ -37,7 +33,7 @@ class FV12:
             a = utils.integer_poly(N, Q)
             e = utils.normal_poly(N)
             rlk1 = a
-            rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk**2)), Q, POLY_MOD)
+            rlk0 = utils.mod(-(a*sk) + e + ((RT**i) * (sk*sk)), Q, POLY_MOD)
             rlks.append((rlk0, rlk1))
         return PublicKey(pk0, pk1, rlks), PrivateKey(sk)
 
@@ -90,8 +86,7 @@ class CipherText:
         result = []
         for i in range(d + 1):
             poly = utils.poly_floor(polynomial // (RT ** i))
-            result.append(Polynomial(
-                [(int(term[0] % RT), int(term[1])) for term in poly.terms], from_monomials=True))
+            result.append(poly % RT)
         return result
 
     def __plain_add(self, pt):
