@@ -1,14 +1,19 @@
 import numpy as np
-from polynomial import Polynomial
+from poly import Polynomial
+import multiprocessing
 from math import floor, log
 from random import choice
+from joblib import Parallel, delayed
 import random
+
+
+def get_uniform(low, high):
+    return int(random.uniform(-2, 2))
 
 
 def binary_poly(size):
     # Generates polynomial with coefficients randomly between [0 , 1]
     # (size - 1) ---> degree of the polynomial
-
     return Polynomial([int(random.uniform(-2, 2)) for i in range(size)])
 
 
@@ -33,20 +38,16 @@ def normal_poly(size):
 
 
 def poly_round(polynomial):
-    return Polynomial([(int(round(term[0])), int(term[1]))
-                       for term in polynomial.terms], from_monomials=True)
+    return polynomial.poly_round()
 
 
 def poly_floor(polynomial):
-    return Polynomial([(int(floor(term[0])), int(term[1]))
-                       for term in polynomial.terms], from_monomials=True)
+    return polynomial.poly_floor()
 
 
 def mod(polynomial, modulus, poly_mod):
-    remainder = (polynomial % poly_mod).terms
-    return Polynomial([(int(term[0] % modulus), int(term[1]))
-                       for term in remainder], from_monomials=True)
-
+    remainder = (polynomial % poly_mod)
+    return remainder % modulus
 
 # a = [5, 16, 10, 22, 7, 11, 1, 3]
 # a = Polynomial(a[::-1])
@@ -242,3 +243,17 @@ def modInverse(A, M):
         x = x + m0
 
     return x
+
+
+# N = 4096
+# RT = 2
+# T = 1024
+# Q = get_coefficient_modulus(58)
+# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+
+
+# sk = binary_poly(N)
+# a = integer_poly(N, Q)
+# e = normal_poly(N)
+# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+# print(mod(-(a*sk) + e, Q, POLY_MOD))
