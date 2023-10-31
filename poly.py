@@ -90,6 +90,14 @@ class Polynomial():
                 res.poly[key] = (self.poly[key] // other)
             return res
 
+    def __truediv__(self, other):
+        if not isinstance(other, int):
+            raise Exception('Invalid Type')
+        else:
+            for key in self.poly:
+                self.poly[key] = (self.poly[key] / other)
+            return self
+
     def __neg__(self):
         for key in self.poly:
             self.poly[key] = -self.poly[key]
