@@ -1,4 +1,4 @@
-import multiprocessing
+
 from math import floor, log
 from joblib import Parallel, delayed
 from random import choice
@@ -7,10 +7,10 @@ import time
 from poly import Polynomial
 # Params Set 1
 # N = 4096
-# RT = 2
+# self.params.RT = 2
 # T = 1024
-# Q = 2**63
-# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+# self.params.Q = 2**63
+# self.params.POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
 # Params Set 2
 # N = 1024
@@ -19,129 +19,157 @@ from poly import Polynomial
 # Q = 2**63
 # POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
-N = 1024
-RT = 16
-T = 2*32
-Q = 2**100
-POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+# N = 1024
+# RT = 16
+# T = 65535
+# Q = 2**312
+# P = 2**90
+# POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+
+
+class Params:
+    def __init__(self, N, RT, T, Q):
+        self. N = N
+        self.RT = RT
+        self.T = T
+        self.Q = Q
+        self.POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
 
 
 class FV12:
+    def __init__(self, params):
+        self.params = params
 
     def generate_keys(self):
-        sk = utils.binary_poly(N)
-        a = utils.integer_poly(N, Q)
-        e = utils.normal_poly(N)
-        pk0 = utils.mod(-(a*sk) + e, Q, POLY_MOD)
+        sk = utils.binary_poly(self.params.N)
+        a = utils.integer_poly(self.params.N, self.params.Q)
+        e = utils.normal_poly(self.params.N)
+        pk0 = utils.mod(-(a*sk) + e, self.params.Q, self.params.POLY_MOD)
         pk1 = a
         rlks = []
-        d = floor(log(Q, RT))
+        d = floor(log(self.params.Q, self.params.RT))
         for i in range(d + 1):
-            a = utils.integer_poly(N, Q)
-            e = utils.normal_poly(N)
+            a = utils.integer_poly(self.params.N, self.params.Q)
+            e = utils.normal_poly(self.params.N)
             rlk0 = utils.mod(-(a*sk) + e +
-                             ((RT**i) * (sk*sk)), Q, POLY_MOD)
+                             ((self.params.RT**i) * (sk*sk)), self.params.Q, self.params.POLY_MOD)
             rlk1 = a
             rlks.append((rlk0, rlk1))
-        return PublicKey(pk0, pk1, rlks), PrivateKey(sk)
+        return PublicKey(pk0, pk1, rlks, self.params), PrivateKey(sk, self.params)
 
 
 class PublicKey:
-    def __init__(self, pk0, pk1, rlks):
+    def __init__(self, pk0, pk1, rlks, params):
         self.pk0 = pk0
         self.pk1 = pk1
         self.rlks = rlks
+        self.params = params
 
     def encrypt(self, pt):
-        delta = Q / T
-        u = utils.binary_poly(N)
-        e1 = utils.normal_poly(N)
-        e2 = utils.normal_poly(N)
+        delta = self.params.Q / self.params.T
+        u = utils.binary_poly(self.params.N)
+        e1 = utils.normal_poly(self.params.N)
+        e2 = utils.normal_poly(self.params.N)
 
         c0 = utils.mod((self.pk0 * u) + e1 +
-                       round(delta * pt), Q, POLY_MOD)
-        c1 = utils.mod((self.pk1 * u) + e2, Q, POLY_MOD)
+                       round(delta * pt), self.params.Q, self.params.POLY_MOD)
+        c1 = utils.mod((self.pk1 * u) + e2,
+                       self.params.Q, self.params.POLY_MOD)
 
-        return CipherText(c0, c1, self.pk0, self.pk1, self.rlks)
+        return CipherText(c0, c1, self.pk0, self.pk1, self.rlks, self.params)
 
 
 class PrivateKey:
-    def __init__(self, sk):
+    def __init__(self, sk, params):
         self.sk = sk
+        self.params = params
 
     def decrypt(self, ciphertext):
-        scale = T / Q
+        scale = self.params.T / self.params.Q
         temp = utils.mod(ciphertext.ct0 + ciphertext.ct1 *
-                         self.sk, Q, POLY_MOD)[0]
+                         self.sk, self.params.Q, self.params.POLY_MOD)[0]
 
-        pt = int((round(scale * temp) % T))
+        pt = int((round(scale * temp) % self.params.T))
         return pt
 
 
 class CipherText:
 
-    def __init__(self, ct0, ct1, pk0, pk1, rlks):
+    def __init__(self, ct0, ct1, pk0, pk1, rlks, params):
         self.ct0 = ct0
         self.ct1 = ct1
         self.pk0 = pk0
         self.pk1 = pk1
         self.rlks = rlks
+        self.params = params
 
     def __base_decompose(self, polynomial):
         # To fetch the power of T used and create an array of
-        d = floor(log(Q, RT))
+        d = floor(log(self.params.Q, self.params.RT))
 
         result = []
         for i in range(d + 1):
-            poly = utils.poly_floor(polynomial // (RT ** i))
-            result.append(poly % RT)
+            poly = utils.poly_floor(polynomial // (self.params.RT ** i))
+            result.append(poly % self.params.RT)
 
         return result
 
     def __plain_add(self, pt):
 
-        delta = Q // T
+        delta = self.params.Q // self.params.T
         m = delta * pt    # scaled_pt
-        res0 = utils.mod((self.ct0 + m), Q, POLY_MOD)
-        return CipherText(res0, self.ct1, self.pk0, self.pk1, self.rlks)
+        res0 = utils.mod(
+            (self.ct0 + m), self.params.Q, self.params.POLY_MOD)
+        return CipherText(res0, self.ct1, self.pk0, self.pk1, self.rlks, self.params)
 
     def __plain_multiply(self, pt):
 
-        res0 = utils.mod((self.ct0 * pt), Q, POLY_MOD)
-        res1 = utils.mod((self.ct1 * pt), Q, POLY_MOD)
-        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks)
+        res0 = utils.mod(
+            (self.ct0 * pt), self.params.Q, self.params.POLY_MOD)
+        res1 = utils.mod(
+            (self.ct1 * pt), self.params.Q, self.params.POLY_MOD)
+        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks, self.params)
 
     def __plain_divide(self, pt):
-        res0 = utils.mod((self.ct0 * utils.modInverse(pt, T)), Q, POLY_MOD)
-        res1 = utils.mod((self.ct1 * utils.modInverse(pt, T)), Q, POLY_MOD)
-        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks)
+        res0 = utils.mod((self.ct0 * utils.modInverse(pt, self.params.T)),
+                         self.params.Q, self.params.POLY_MOD)
+        res1 = utils.mod((self.ct1 * utils.modInverse(pt, self.params.T)),
+                         self.params.Q, self.params.POLY_MOD)
+        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks, self.params)
 
     def __cipher_add(self, ciphertext):
 
-        res0 = utils.mod(self.ct0 + ciphertext.ct0, Q, POLY_MOD)
-        res1 = utils.mod(self.ct1 + ciphertext.ct1, Q, POLY_MOD)
-        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks)
+        res0 = utils.mod(self.ct0 + ciphertext.ct0,
+                         self.params.Q, self.params.POLY_MOD)
+        res1 = utils.mod(self.ct1 + ciphertext.ct1,
+                         self.params.Q, self.params.POLY_MOD)
+        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks, self.params)
 
     def __cipher_sub(self, ciphertext):
 
-        res0 = utils.mod(self.ct0 - ciphertext.ct0, Q, POLY_MOD)
-        res1 = utils.mod(self.ct1 - ciphertext.ct1, Q, POLY_MOD)
-        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks)
+        res0 = utils.mod(self.ct0 - ciphertext.ct0,
+                         self.params.Q, self.params.POLY_MOD)
+        res1 = utils.mod(self.ct1 - ciphertext.ct1,
+                         self.params.Q, self.params.POLY_MOD)
+        return CipherText(res0, res1, self.pk0, self.pk1, self.rlks, self.params)
 
     def mul_sum_polynomials(self, a, rlks_i, b, start, end):
         return sum(a[i][rlks_i]*b[i] for i in range(start, end))
 
     def __parallel_cipher_multiply(self, ciphertext):
-        d = floor(log(Q, RT))
-        scale = T / Q
+        d = floor(log(self.params.Q, self.params.RT))
+        scale = self.params.T / self.params.Q
 
         temp = self.ct0 * ciphertext.ct0
-        res0 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
+        res0 = utils.mod(utils.poly_round(scale * temp),
+                         self.params.Q, self.params.POLY_MOD)
         temp = self.ct0 * ciphertext.ct1 + self.ct1 * ciphertext.ct0
-        res1 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
+        res1 = utils.mod(utils.poly_round(scale * temp),
+                         self.params.Q, self.params.POLY_MOD)
 
         temp = self.ct1 * ciphertext.ct1
-        res2 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
+        res2 = utils.mod(utils.poly_round(scale * temp),
+                         self.params.Q, self.params.POLY_MOD)
         decomposed_res2 = self.__base_decompose(res2)
         start = time.time()
         num_chunks = 8
@@ -150,39 +178,42 @@ class CipherText:
             delayed(self.mul_sum_polynomials)(self.rlks, 0, decomposed_res2, start, min(d+1, start+chunk_size)) for start in range(0, d+1, chunk_size))
         temp = sum(temp)
         res_0 = utils.mod(
-            res0 + temp, Q, POLY_MOD)
+            res0 + temp, self.params.Q, self.params.POLY_MOD)
         temp = Parallel(n_jobs=num_chunks)(
             delayed(self.mul_sum_polynomials)(self.rlks, 1, decomposed_res2, start, min(d+1, start+chunk_size)) for start in range(0, d+1, chunk_size))
         temp = sum(temp)
         res_1 = utils.mod(
-            res1 + temp, Q, POLY_MOD)
+            res1 + temp, self.params.Q, self.params.POLY_MOD)
         end = time.time()
         print("The time of relinearisation is :",
               (end-start) * 10**3, "ms")
 
-        return CipherText(res_0, res_1, self.pk0, self.pk1, self.rlks)
+        return CipherText(res_0, res_1, self.pk0, self.pk1, self.rlks, self.params)
 
     def __cipher_multiply(self, ciphertext):
-        d = floor(log(Q, RT))
-        scale = T / Q
+        d = floor(log(self.params.Q, self.params.RT))
+        scale = self.params.T / self.params.Q
         temp = self.ct0 * ciphertext.ct0
-        res0 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
+        res0 = utils.mod(utils.poly_round(scale * temp),
+                         self.params.Q, self.params.POLY_MOD)
         temp = self.ct0 * ciphertext.ct1 + self.ct1 * ciphertext.ct0
-        res1 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
+        res1 = utils.mod(utils.poly_round(scale * temp),
+                         self.params.Q, self.params.POLY_MOD)
 
         temp = self.ct1 * ciphertext.ct1
-        res2 = utils.mod(utils.poly_round(scale * temp), Q, POLY_MOD)
+        res2 = utils.mod(utils.poly_round(scale * temp),
+                         self.params.Q, self.params.POLY_MOD)
         self.decomposed_res2 = self.__base_decompose(res2)
         start = time.time()
         res_0 = utils.mod(
-            res0 + sum(self.rlks[i][0] * self.decomposed_res2[i] for i in range(d + 1)), Q, POLY_MOD)
+            res0 + sum(self.rlks[i][0] * self.decomposed_res2[i] for i in range(d + 1)), self.params.Q, self.params.POLY_MOD)
         res_1 = utils.mod(
-            res1 + sum(self.rlks[i][1] * self.decomposed_res2[i] for i in range(d + 1)), Q, POLY_MOD)
+            res1 + sum(self.rlks[i][1] * self.decomposed_res2[i] for i in range(d + 1)), self.params.Q, self.params.POLY_MOD)
         end = time.time()
         print("The time of relinearisation is :",
               (end-start) * 10**3, "ms")
 
-        return CipherText(res_0, res_1, self.pk0, self.pk1, self.rlks)
+        return CipherText(res_0, res_1, self.pk0, self.pk1, self.rlks, self.params)
 
     def __plain_power(self, pt):
         if (pt == 0):
@@ -203,7 +234,7 @@ class CipherText:
             else:
                 return self.__cipher_add(other)
         else:
-            raise Exception("Unkown Type!!")
+            raise Exception("Unknown Type!!")
 
     def __sub__(self, other):
         if (isinstance(other, int)):
@@ -229,6 +260,9 @@ class CipherText:
         else:
             raise Exception("Unkown Type!!")
 
+    def __rmul__(self, other):
+        return self*other
+
     def __pow__(self, other):
         if (isinstance(other, int)):
             return self.__plain_power(other)
@@ -247,26 +281,9 @@ class CipherText:
 
 
 if __name__ == '__main__':
-    fv12 = FV12()
+    params = Params(1024, 16, 1024, 2**63)
+    fv12 = FV12(params)
     public_key, private_key = fv12.generate_keys()
-    # a = 5
-    # b = 10
-    # start = time.time()
-    # encrypted_a = public_key.encrypt(a)
-    # end = time.time()
-    # print("The time of encryption is :",
-    #       (end-start) * 10**3, "ms")
-    # encrypted_b = public_key.encrypt(b)
-    # start = time.time()
-    # encrypted_res = encrypted_a*encrypted_b
-    # end = time.time()
-    # print("The time of homomorphic multiplication is :",
-    #       (end-start) * 10**3, "ms")
-    # start = time.time()
-    # print(private_key.decrypt(encrypted_res))
-    # end = time.time()
-    # print("The time of decryption is :",
-    #       (end-start) * 10**3, "ms")
 
     print("Enter your equation:")
     while (True):
