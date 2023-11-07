@@ -4,6 +4,7 @@ import random
 
 class Polynomial():
     def __init__(self, arr):
+
         self.poly = {}
         self.degree = 0
         for i in range(len(arr)):
@@ -12,18 +13,23 @@ class Polynomial():
                 self.degree = i
 
     def __add__(self, other):
+
+        res = Polynomial([])
+        del_list = []
         if (isinstance(other, Polynomial)):
             for deg in other.poly:
                 coeff = other.poly[deg]
                 if (deg in self.poly):
                     self.poly[deg] += coeff
                     if (self.poly[deg] == 0):
-                        del self.poly[deg]
+                        del_list.append(deg)
                 else:
                     if deg > self.degree:
                         self.degree = deg
                     self.poly[deg] = coeff
             return self
+        for del_key in del_list:
+            del self.poly[del_key]
         else:
             if (0 in self.poly):
                 self.poly[0] += other
@@ -35,18 +41,20 @@ class Polynomial():
 
     def __sub__(self, other):
         if (isinstance(other, Polynomial)):
+            del_list = []
             for deg in other.poly:
-
                 coeff = other.poly[deg]
                 if (deg in self.poly):
                     self.poly[deg] -= coeff
                     if (self.poly[deg] == 0):
-                        del self.poly[deg]
+                        del_list.append(deg)
                 else:
                     if deg > self.degree:
                         self.degree = deg
                     self.poly[deg] = - coeff
             return self
+        for key in del_list:
+            del self.poly[key]
         else:
             if (0 in self.poly):
                 self.poly[0] -= other
@@ -60,6 +68,7 @@ class Polynomial():
         return self.poly[key]
 
     def __mod__(self, other):
+
         if (isinstance(other, Polynomial)):
             while (self.degree >= other.degree):
                 mult = self.poly[self.degree]
@@ -105,9 +114,11 @@ class Polynomial():
 
     def __mul__(self, other):
         if (not isinstance(other, Polynomial)):
+            res = Polynomial([])
             for key in self.poly:
-                self.poly[key] *= other
-            return self
+                res.poly[key] = self.poly[key] * other
+
+            return res
         else:
             res = Polynomial([])
             for a in self.poly:

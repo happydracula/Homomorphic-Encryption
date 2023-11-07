@@ -1,10 +1,13 @@
 
+
+from poly import Polynomial
 from math import floor, log
 from joblib import Parallel, delayed
+import importlib
 from random import choice
 import utils
 import time
-from poly import Polynomial
+
 # Params Set 1
 # N = 4096
 # self.params.RT = 2
@@ -34,6 +37,7 @@ class Params:
         self.T = T
         self.Q = Q
         self.POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
+        print('Initialised')
 
 
 class FV12:
@@ -55,6 +59,7 @@ class FV12:
                              ((self.params.RT**i) * (sk*sk)), self.params.Q, self.params.POLY_MOD)
             rlk1 = a
             rlks.append((rlk0, rlk1))
+            print('Eval Key:'+str(i)+'/'+str(d)+' Done')
         return PublicKey(pk0, pk1, rlks, self.params), PrivateKey(sk, self.params)
 
 
@@ -90,6 +95,8 @@ class PrivateKey:
                          self.sk, self.params.Q, self.params.POLY_MOD)[0]
 
         pt = int((round(scale * temp) % self.params.T))
+        pt = ((pt+floor(self.params.T/2)) %
+              self.params.T)-floor(self.params.T/2)
         return pt
 
 
@@ -263,6 +270,12 @@ class CipherText:
     def __rmul__(self, other):
         return self*other
 
+    def __radd__(self, other):
+        return self+other
+
+    def __rsub__(self, other):
+        return self-other
+
     def __pow__(self, other):
         if (isinstance(other, int)):
             return self.__plain_power(other)
@@ -281,7 +294,7 @@ class CipherText:
 
 
 if __name__ == '__main__':
-    params = Params(1024, 16, 1024, 2**63)
+    params = Params(128, 32, 4293918721, 2**218)
     fv12 = FV12(params)
     public_key, private_key = fv12.generate_keys()
 
