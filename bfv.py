@@ -51,12 +51,13 @@ class FV12:
         pk0 = utils.mod(-(a*sk) + e, self.params.Q, self.params.POLY_MOD)
         pk1 = a
         rlks = []
+        sk_square = sk*sk
         d = floor(log(self.params.Q, self.params.RT))
         for i in range(d + 1):
             a = utils.integer_poly(self.params.N, self.params.Q)
             e = utils.normal_poly(self.params.N)
             rlk0 = utils.mod(-(a*sk) + e +
-                             ((self.params.RT**i) * (sk*sk)), self.params.Q, self.params.POLY_MOD)
+                             ((self.params.RT**i) * (sk_square)), self.params.Q, self.params.POLY_MOD)
             rlk1 = a
             rlks.append((rlk0, rlk1))
             print('Eval Key:'+str(i)+'/'+str(d)+' Done')
@@ -178,7 +179,7 @@ class CipherText:
         res2 = utils.mod(utils.poly_round(scale * temp),
                          self.params.Q, self.params.POLY_MOD)
         decomposed_res2 = self.__base_decompose(res2)
-        start = time.time()
+        # start = time.time()
         num_chunks = 8
         chunk_size = (d+1)//8
         temp = Parallel(n_jobs=num_chunks)(
@@ -191,9 +192,9 @@ class CipherText:
         temp = sum(temp)
         res_1 = utils.mod(
             res1 + temp, self.params.Q, self.params.POLY_MOD)
-        end = time.time()
-        print("The time of relinearisation is :",
-              (end-start) * 10**3, "ms")
+        # end = time.time()
+        # print("The time of relinearisation is :",
+        #       (end-start) * 10**3, "ms")
 
         return CipherText(res_0, res_1, self.pk0, self.pk1, self.rlks, self.params)
 

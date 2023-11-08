@@ -33,7 +33,7 @@ def normal_poly(size):
     mean = 0
     std = 3.2
     t = np.clip(np.random.normal(
-        mean, std, size).astype(int), -10, 10).tolist()
+        mean, std, size).astype(int), -8, 8).tolist()
     return Polynomial(t)
 
 
