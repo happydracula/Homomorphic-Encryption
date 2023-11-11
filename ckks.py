@@ -206,7 +206,7 @@ class CipherText:
             else:
                 return self.__cipher_multiply(other)
         else:
-            raise Exception("Unkown Type!!")
+            raise Exception("Unkown Type!!"+str(type(other)))
 
     def __rmul__(self, other):
         return self*other
