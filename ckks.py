@@ -148,8 +148,20 @@ class CipherText:
         return self.relinearize(self.sw0, self.sw1, res0, res1, res2, self.scale * ciphertext.scale, self.modulus)
 
     def relinearize(self, sw0, sw1, res0, res1, res2, new_scale, modulus):
-        new_c0 = utils.mod(sw0*res2, modulus *
-                           self.params.big_mod, self.params.POLY_MOD)
+        new_res0 = utils.mod(sw0*res2, modulus *
+                             self.params.big_mod, self.params.POLY_MOD)
+        new_res0 = utils.small_mod(new_res0, modulus*self.params.big_mod)
+        new_res0 = new_res0//self.params.big_mod
+        new_res0 = utils.mod(new_res0+res0, modulus, self.params.POLY_MOD)
+        new_res0 = utils.small_mod(new_res0, modulus)
+
+        new_res1 = utils.mod(sw1*res2, modulus *
+                             self.params.big_mod, self.params.POLY_MOD)
+        new_res1 = utils.small_mod(new_res1, modulus*self.params.big_mod)
+        new_res1 = new_res1//self.params.big_mod
+        new_res1 = utils.mod(new_res1+res1, modulus, self.params.POLY_MOD)
+        new_res1 = utils.small_mod(new_res1, modulus)
+        return CipherText(new_res0, new_res1, sw0, sw1, new_scale, modulus, self.params)
 
     def __plain_power(self, pt):
         if (pt == 0):
