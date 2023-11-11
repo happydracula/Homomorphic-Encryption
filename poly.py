@@ -6,11 +6,10 @@ class Polynomial():
     def __init__(self, arr):
 
         self.poly = {}
-        self.degree = 0
+
         for i in range(len(arr)):
             if (arr[i] != 0):
                 self.poly[i] = arr[i]
-                self.degree = i
 
     def __add__(self, other):
 
@@ -24,12 +23,11 @@ class Polynomial():
                     if (self.poly[deg] == 0):
                         del_list.append(deg)
                 else:
-                    if deg > self.degree:
-                        self.degree = deg
                     self.poly[deg] = coeff
+            for del_key in del_list:
+                del self.poly[del_key]
             return self
-        for del_key in del_list:
-            del self.poly[del_key]
+
         else:
             if (0 in self.poly):
                 self.poly[0] += other
@@ -38,6 +36,20 @@ class Polynomial():
             else:
                 self.poly[0] = other
             return self
+
+    def convert_to_list(self):
+        res = []
+        next_deg = 0
+        temp = sorted(self.poly.keys())
+        i = 0
+        while i < len(temp):
+            if (temp[i] == next_deg):
+                res.append(self.poly[next_deg])
+                i += 1
+            else:
+                res.append(0)
+            next_deg += 1
+        return res
 
     def __sub__(self, other):
         if (isinstance(other, Polynomial)):
@@ -49,12 +61,11 @@ class Polynomial():
                     if (self.poly[deg] == 0):
                         del_list.append(deg)
                 else:
-                    if deg > self.degree:
-                        self.degree = deg
                     self.poly[deg] = - coeff
+            for key in del_list:
+                del self.poly[key]
             return self
-        for key in del_list:
-            del self.poly[key]
+
         else:
             if (0 in self.poly):
                 self.poly[0] -= other
@@ -70,6 +81,14 @@ class Polynomial():
     def __mod__(self, other):
 
         if (isinstance(other, Polynomial)):
+            self.degree = 0
+            for key in self.poly:
+                if key > self.degree:
+                    self.degree = key
+            other.degree = 0
+            for key in other.poly:
+                if key > other.degree:
+                    other.degree = key
             while (self.degree >= other.degree):
                 mult = self.poly[self.degree]
                 if (self.degree-other.degree in self.poly):
@@ -86,8 +105,13 @@ class Polynomial():
                 self.degree = i
             return self
         else:
+            del_list = []
             for key in self.poly:
                 self.poly[key] %= other
+                if (self.poly[key] == 0):
+                    del_list.append(key)
+            for key in del_list:
+                del self.poly[key]
             return self
 
     def __floordiv__(self, other):
@@ -96,7 +120,10 @@ class Polynomial():
         else:
             res = Polynomial([])
             for key in self.poly:
-                res.poly[key] = (self.poly[key] // other)
+                t = (self.poly[key] // other)
+                if (t != 0):
+                    res.poly[key] = t
+
             return res
 
     def __truediv__(self, other):
@@ -115,6 +142,8 @@ class Polynomial():
     def __mul__(self, other):
         if (not isinstance(other, Polynomial)):
             res = Polynomial([])
+            if other == 0:
+                return res
             for key in self.poly:
                 res.poly[key] = self.poly[key] * other
 
@@ -128,7 +157,6 @@ class Polynomial():
                     if (power in res.poly):
                         res.poly[power] += coeff
                     else:
-                        res.degree = max(res.degree, power)
                         res.poly[power] = coeff
             return res
 
@@ -139,13 +167,27 @@ class Polynomial():
         return self+other
 
     def poly_floor(self):
+        del_list = []
         for key in self.poly:
-            self.poly[key] = int(math.floor(self.poly[key]))
+            t = int(math.floor(self.poly[key]))
+            if (t != 0):
+                self.poly[key] = t
+            else:
+                del_list.append(key)
+        for key in del_list:
+            del self.poly[key]
         return self
 
     def poly_round(self):
+        del_list = []
         for key in self.poly:
-            self.poly[key] = int(round(self.poly[key]))
+            t = int(round(self.poly[key]))
+            if (t != 0):
+                self.poly[key] = t
+            else:
+                del_list.append(key)
+        for key in del_list:
+            del self.poly[key]
         return self
 
     def __str__(self):
