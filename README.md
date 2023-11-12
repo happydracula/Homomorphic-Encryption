@@ -1,4 +1,4 @@
-#Homomorphic Machine Learning
+# Homomorphic Machine Learning
 <br>
 Native Python implementation of the BFV and CKKS homomorphic encryption schemes and demonstration of homomorphic machine learning inference in linear and logistic regression
 <br/>
