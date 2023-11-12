@@ -1,12 +1,10 @@
 
-import sys
-sys.path.insert(0, '../utils')
-from poly import Polynomial
+from utils.poly import Polynomial
 from math import floor, log
 from joblib import Parallel, delayed
 import importlib
 from random import choice
-import utils as utils
+import utils.utils as utils
 import time
 
 # Params Set 1
@@ -295,50 +293,3 @@ class CipherText:
         return str(self.ct0)+' '+str(self.ct1)
 
 
-if __name__ == '__main__':
-    params = Params(128, 32, 4293918721, 2**218)
-    fv12 = FV12(params)
-    public_key, private_key = fv12.generate_keys()
-
-    print("Enter your equation:")
-    while (True):
-        print(">> ", end="")
-        eq = input()
-        eq = eq.replace(" ", "")
-        conversion = utils.Conversion(len(eq))
-        postfix_eq = conversion.infixToPostfix(eq)
-
-        stack = []
-        i = 0
-
-        for i in range(len(postfix_eq)):
-            if (postfix_eq[i].isdigit()):
-                postfix_eq[i] = public_key.encrypt(int(postfix_eq[i]))
-        i = 0
-        first = 0
-        while i < len(postfix_eq):
-
-            if (isinstance(postfix_eq[i], CipherText)):
-                stack.append(postfix_eq[i])
-
-            else:
-                op = postfix_eq[i]
-                b = stack.pop()
-                a = stack.pop()
-                if (op == '+'):
-                    stack.append(a+b)
-                elif (op == '-'):
-                    stack.append(a-b)
-                elif (op == '*'):
-                    stack.append(a*b)
-                elif (op == '^'):
-                    b = private_key.decrypt(b)
-                    stack.append(a**b)
-                elif (op == '/'):
-                    b = private_key.decrypt(b)
-                    stack.append(a//b)
-                else:
-                    print('Operation Not Supported')
-                    break
-            i += 1
-        print(private_key.decrypt(stack.pop()))

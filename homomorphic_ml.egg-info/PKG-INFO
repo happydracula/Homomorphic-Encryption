@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: homomorphic-ml
+Version: 0.0.0
+Summary: Python implementations of CKKS and BFV cryptosystems with their application in ML
+Author: Dellwyn Tennison
+Author-email: dellwyntennison@gmal.com
+License: MIT

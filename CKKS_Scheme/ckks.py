@@ -1,23 +1,21 @@
-import sys
 
-sys.path.insert(0, '../utils')
-from poly import Polynomial
+from utils.poly import Polynomial
 from math import floor, log
 from joblib import Parallel, delayed
 import importlib
-from plaintext import Plaintext
+from utils.plaintext import Plaintext
 from random import choice
-import utils as utils
+import utils.utils as utils
 
 
 
 class Params:
-    def __init__(self, N, Q, big_mod):
+    def __init__(self, N, Q, big_mod,do_rescale=True):
         self. N = N
         self.Q = Q
         self.big_mod = big_mod
         self.POLY_MOD = Polynomial([1] + ([0] * (N-1)) + [1])
-        print('Initialised')
+        self.do_rescale=do_rescale
 
 
 class CKKS:
@@ -134,7 +132,9 @@ class CipherText:
         res1 = utils.small_mod(res1, self.modulus)
         temp = CipherText(res0, res1, self.sw0, self.sw1, self.scale *
                           pt.scale, self.modulus, self.params)
-        return self.rescale(temp, self.scale)
+        if(self.params.do_rescale):
+            return self.rescale(temp, self.scale)
+        return temp
 
     def __cipher_multiply(self, ciphertext):
         if self.modulus != ciphertext.modulus:
@@ -151,7 +151,9 @@ class CipherText:
         res2 = utils.small_mod(res2, self.modulus)
         temp = self.relinearize(self.sw0, self.sw1, res0, res1,
                                 res2, self.scale * ciphertext.scale, self.modulus)
-        return self.rescale(temp, self.scale)
+        if(self.params.do_rescale):
+            return self.rescale(temp, self.scale)
+        return temp
 
     def relinearize(self, sw0, sw1, res0, res1, res2, new_scale, modulus):
         new_res0 = utils.mod(sw0*res2, modulus *
@@ -238,50 +240,3 @@ class CipherText:
         return str(self.ct0)+' '+str(self.ct1)
 
 
-# if __name__ == '__main__':
-#     params = Params(128, 32, 4293918721, 2**218)
-#     fv12 = FV12(params)
-#     public_key, private_key = fv12.generate_keys()
-
-#     print("Enter your equation:")
-#     while (True):
-#         print(">> ", end="")
-#         eq = input()
-#         eq = eq.replace(" ", "")
-#         conversion = utils.Conversion(len(eq))
-#         postfix_eq = conversion.infixToPostfix(eq)
-
-#         stack = []
-#         i = 0
-
-#         for i in range(len(postfix_eq)):
-#             if (postfix_eq[i].isdigit()):
-#                 postfix_eq[i] = public_key.encrypt(int(postfix_eq[i]))
-#         i = 0
-#         first = 0
-#         while i < len(postfix_eq):
-
-#             if (isinstance(postfix_eq[i], CipherText)):
-#                 stack.append(postfix_eq[i])
-
-#             else:
-#                 op = postfix_eq[i]
-#                 b = stack.pop()
-#                 a = stack.pop()
-#                 if (op == '+'):
-#                     stack.append(a+b)
-#                 elif (op == '-'):
-#                     stack.append(a-b)
-#                 elif (op == '*'):
-#                     stack.append(a*b)
-#                 elif (op == '^'):
-#                     b = private_key.decrypt(b)
-#                     stack.append(a**b)
-#                 elif (op == '/'):
-#                     b = private_key.decrypt(b)
-#                     stack.append(a//b)
-#                 else:
-#                     print('Operation Not Supported')
-#                     break
-#             i += 1
-#         print(private_key.decrypt(stack.pop()))

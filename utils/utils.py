@@ -1,5 +1,5 @@
 import numpy as np
-from poly import Polynomial
+from .poly import Polynomial
 import multiprocessing
 from math import floor, log
 from random import choice
