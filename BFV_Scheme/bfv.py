@@ -1,11 +1,12 @@
 
-
+import sys
+sys.path.insert(0, '../utils')
 from poly import Polynomial
 from math import floor, log
 from joblib import Parallel, delayed
 import importlib
 from random import choice
-import utils
+import utils as utils
 import time
 
 # Params Set 1
